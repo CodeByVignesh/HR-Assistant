@@ -7,23 +7,35 @@ load_dotenv()
 pinecone_client = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 pinecone_index = pinecone_client.Index(os.getenv("PINECONE_INDEX_NAME"))
 
+
 def store_in_pinecone(chunks, embeddings):
 
     vectors_to_upsert = []
     for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
         vector_data = {
-            "id":f"chunk_{i}",
-            "values":embedding,
-            "metadata":{
-                "text":chunk,
-                "chunk_index":i
-            }
+            "id": f"chunk_{i}",
+            "values": embedding,
+            "metadata": {"text": chunk, "chunk_index": i},
         }
         vectors_to_upsert.append(vector_data)
-    
-    #Upsert vectors in batches
-    batch_size=100
+
+    # Upsert vectors in batches
+    batch_size = 100
     for i in range(0, len(vectors_to_upsert), batch_size):
-        batch = vectors_to_upsert[i:i+batch_size]
+        batch = vectors_to_upsert[i : i + batch_size]
         pinecone_index.upsert(vectors=batch, namespace="")
-    
+
+
+def matched_chunks(user_q_vector):
+
+    results = pinecone_index.query(
+        vector=user_q_vector, top_k=5, include_metadata=True, namespace=""
+    )
+
+    # print(results)
+
+    matched_chunks = []
+    for match in results.matches:
+        matched_chunks.append(match.metadata.get("text", ""))
+
+    return matched_chunks
